@@ -20,7 +20,7 @@ built from a template that maps trigger fields (`{{pull_request.author}}`, `{{pu
 |---|---|
 | Front end | Angular 22 (standalone, OnPush, signals, typed reactive forms), Angular Material |
 | API | Express 5, Node 22+, Zod validation, pino logging |
-| Persistence | MongoDB with Mongoose; sessions in Mongo via `connect-mongo` |
+| Persistence | MongoDB 7 in Docker Compose, Mongoose; sessions in Mongo via `connect-mongo` |
 | GitHub | GitHub App (`@octokit/app`): user OAuth for sign-in, installation tokens for actions |
 | Shared | `@workflow/shared`: Zod schemas, catalog and template helpers used by both API and web |
 | Tests | Vitest (API, shared, Angular unit-test builder), supertest |
@@ -67,7 +67,7 @@ revoke access when repositories are removed or the app is uninstalled.
 ### Prerequisites
 
 - Node.js 22+ (developed on 24) and npm 10+
-- A MongoDB database (Atlas works)
+- Docker, for the local MongoDB container
 - A GitHub account where you can create a GitHub App and own a test repository
 
 ### 1. Create a webhook proxy channel
@@ -108,8 +108,13 @@ startup and exits with a list of anything missing.
 
 ```bash
 npm install
+docker compose up -d
 npm run dev
 ```
+
+`docker compose up -d` starts MongoDB 7 on `localhost:27017` with no authentication and a named volume. That is
+intentional for a local review: the reviewer needs no cloud account, and the port is bound to localhost only. Point `MONGODB_URI` at another server if you already have one. The API and the Angular app stay on the
+host; only the database is containerized, so hot reload and the webhook forwarder keep working.
 
 `npm run dev` builds the shared package, then runs four processes:
 - the shared package watcher,
@@ -135,6 +140,7 @@ Open <http://localhost:4200>.
 
 | Command | What it does |
 |---|---|
+| `docker compose up -d` | Start local MongoDB (also `npm run db`) |
 | `npm run dev` | Shared watcher, API, web and smee together |
 | `npm test` | All unit tests (shared, API, web) |
 | `npm run lint` | ESLint across the monorepo |
@@ -165,6 +171,9 @@ Open <http://localhost:4200>.
   rejected when the Zap is saved.
 - **Server-side sessions.** An httpOnly, SameSite=Lax cookie with sessions in Mongo: revocable, and no tokens in the
   browser. The Angular dev proxy keeps everything same-origin.
+- **Local MongoDB, not a hosted cluster.** Reviewers run on their own machine, and a cloud cluster fails when their
+  IP is not allowlisted or when credentials would have to travel with the repo. Compose runs Mongo only. The API
+  still takes any `MONGODB_URI`, so a hosted database remains a config change.
 
 ## Known limitations
 
