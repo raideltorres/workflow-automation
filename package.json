@@ -1,0 +1,31 @@
+{
+  "name": "workflow-automation",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @workflow/shared",
+    "build": "npm run build:shared && npm run build -w @workflow/api && npm run build -w @workflow/web",
+    "dev": "npm run build:shared && concurrently -n shared,api,web,smee -c gray,blue,magenta,yellow \"npm run dev -w @workflow/shared\" \"npm run dev -w @workflow/api\" \"npm run start -w @workflow/web\" \"npm run smee -w @workflow/api\"",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "npm run build:shared && npm run test --workspaces --if-present",
+    "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.6",
+    "eslint": "^10.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.0.5"
+  }
+}
