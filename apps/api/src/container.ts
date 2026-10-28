@@ -8,10 +8,16 @@ import type { GitHubGateway } from './integrations/github/github.gateway.js';
 import { OctokitGitHubGateway } from './integrations/github/octokit-github.gateway.js';
 import { AuthController } from './modules/auth/auth.controller.js';
 import { AuthService } from './modules/auth/auth.service.js';
+import { CommentOnPullRequestAction } from './modules/engine/actions/comment-on-pull-request.action.js';
+import { EngineRegistry } from './modules/engine/engine.registry.js';
+import { pullRequestOpenedTrigger } from './modules/engine/triggers/pull-request-opened.trigger.js';
+import { ZapExecutor } from './modules/engine/zap-executor.service.js';
 import { GitHubAccessService } from './modules/github/github-access.service.js';
 import { GitHubRepository } from './modules/github/github.repository.js';
 import { ZapRunRepository } from './modules/runs/zap-run.repository.js';
 import { UserRepository } from './modules/users/user.repository.js';
+import { WebhookController } from './modules/webhooks/webhook.controller.js';
+import { WebhookService } from './modules/webhooks/webhook.service.js';
 import { ZapController } from './modules/zaps/zap.controller.js';
 import { ZapRepository } from './modules/zaps/zap.repository.js';
 import { ZapService } from './modules/zaps/zap.service.js';
@@ -24,6 +30,7 @@ export interface Container {
   readonly githubAccess: GitHubAccessService;
   readonly authController: AuthController;
   readonly zapController: ZapController;
+  readonly webhookController: WebhookController;
 }
 
 export function createContainer(config: AppConfig, logger: Logger, db: typeof mongoose): Container {
@@ -40,13 +47,25 @@ export function createContainer(config: AppConfig, logger: Logger, db: typeof mo
 
   const users = new UserRepository();
   const githubRepository = new GitHubRepository();
-  const githubAccess = new GitHubAccessService(users, githubRepository);
-  const authService = new AuthService(githubGateway, githubAccess, users);
-  const authController = new AuthController(authService, config.webUrl, logger);
-
   const zapRepository = new ZapRepository();
   const zapRunRepository = new ZapRunRepository();
-  const zapController = new ZapController(new ZapService(zapRepository, zapRunRepository, githubAccess));
 
-  return { config, logger, sessionStore, githubGateway, githubAccess, authController, zapController };
+  const githubAccess = new GitHubAccessService(users, githubRepository);
+  const authService = new AuthService(githubGateway, githubAccess, users);
+  const zapService = new ZapService(zapRepository, zapRunRepository, githubAccess);
+
+  const registry = new EngineRegistry([pullRequestOpenedTrigger], [new CommentOnPullRequestAction(githubGateway)]);
+  const executor = new ZapExecutor(zapRepository, zapRunRepository, githubAccess, registry, logger);
+  const webhookService = new WebhookService(registry, executor, githubAccess, logger);
+
+  return {
+    config,
+    logger,
+    sessionStore,
+    githubGateway,
+    githubAccess,
+    authController: new AuthController(authService, config.webUrl, logger),
+    zapController: new ZapController(zapService),
+    webhookController: new WebhookController(webhookService, config.github.webhookSecret, logger),
+  };
 }

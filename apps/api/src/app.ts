@@ -6,6 +6,7 @@ import type { Container } from './container.js';
 import { createErrorHandler, notFoundHandler } from './core/middleware/error-handler.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createGitHubRouter } from './modules/github/github.routes.js';
+import { createWebhookRouter } from './modules/webhooks/webhook.routes.js';
 import { createZapRouter } from './modules/zaps/zap.routes.js';
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -21,6 +22,8 @@ export function createApp(container: Container): Express {
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
+
+  app.use('/api/webhooks', createWebhookRouter(container.webhookController));
 
   app.use(express.json({ limit: '100kb' }));
   app.use(
