@@ -84,6 +84,36 @@ describe('ZapExecutor', () => {
     expect(ctx.action.execute).not.toHaveBeenCalled();
   });
 
+  it('runs every matching zap independently, so one failure does not block the others', async () => {
+    ctx.zaps.findEnabledByTrigger.mockResolvedValue([buildZap(), buildZap({ id: 'zap-2', ownerId: 'user-2' })]);
+    ctx.runs.claim.mockResolvedValueOnce({ id: 'run-1' }).mockResolvedValueOnce({ id: 'run-2' });
+    ctx.action.execute.mockRejectedValueOnce(new Error('rate limited'));
+
+    const outcomes = await ctx.executor.handle(buildTriggerEvent());
+
+    expect(outcomes).toEqual(['failed', 'succeeded']);
+    expect(ctx.runs.markFailed).toHaveBeenCalledWith('run-1', 'rate limited');
+    expect(ctx.runs.markSucceeded).toHaveBeenCalledWith('run-2', { commentUrl: 'https://github.com/c/1' });
+  });
+
+  it('renders unknown or missing variables as empty text', async () => {
+    ctx.zaps.findEnabledByTrigger.mockResolvedValue([
+      buildZap({ action: { key: 'github.pull_request.comment', input: { body: 'Hi {{pull_request.body}}!' } } }),
+    ]);
+
+    await ctx.executor.handle(buildTriggerEvent());
+
+    expect(ctx.action.execute).toHaveBeenCalledWith(expect.anything(), { body: 'Hi !' });
+  });
+
+  it('records non-Error failures as text', async () => {
+    ctx.action.execute.mockRejectedValue('socket hang up');
+
+    await ctx.executor.handle(buildTriggerEvent());
+
+    expect(ctx.runs.markFailed).toHaveBeenCalledWith('run-1', 'socket hang up');
+  });
+
   it('does nothing when no enabled zap matches', async () => {
     ctx.zaps.findEnabledByTrigger.mockResolvedValue([]);
 

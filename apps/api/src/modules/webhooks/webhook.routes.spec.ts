@@ -55,6 +55,60 @@ describe('POST /api/webhooks/github', () => {
     expect(handle).not.toHaveBeenCalled();
   });
 
+  it('rejects a delivery with no signature header', async () => {
+    const response = await request(buildApp(handle))
+      .post('/api/webhooks/github')
+      .set('content-type', 'application/json')
+      .set('x-github-event', 'pull_request')
+      .set('x-github-delivery', 'delivery-1')
+      .send(body);
+
+    expect(response.status).toBe(401);
+    expect(handle).not.toHaveBeenCalled();
+  });
+
+  it('rejects a correctly signed body that is not valid JSON', async () => {
+    const malformed = '{"action":';
+    const response = await request(buildApp(handle))
+      .post('/api/webhooks/github')
+      .set('content-type', 'application/json')
+      .set('x-github-event', 'pull_request')
+      .set('x-github-delivery', 'delivery-1')
+      .set('x-hub-signature-256', signGitHubPayload(secret, malformed))
+      .send(malformed);
+
+    expect(response.status).toBe(400);
+    expect(handle).not.toHaveBeenCalled();
+  });
+
+  it('rejects payloads that are not sent as JSON', async () => {
+    const response = await request(buildApp(handle))
+      .post('/api/webhooks/github')
+      .set('content-type', 'application/x-www-form-urlencoded')
+      .set('x-github-event', 'pull_request')
+      .set('x-github-delivery', 'delivery-1')
+      .set('x-hub-signature-256', signGitHubPayload(secret, 'payload=%7B%7D'))
+      .send('payload=%7B%7D');
+
+    expect(response.status).toBe(400);
+    expect(handle).not.toHaveBeenCalled();
+  });
+
+  it('still acknowledges when background processing fails', async () => {
+    handle.mockRejectedValue(new Error('database unavailable'));
+
+    const response = await request(buildApp(handle))
+      .post('/api/webhooks/github')
+      .set('content-type', 'application/json')
+      .set('x-github-event', 'pull_request')
+      .set('x-github-delivery', 'delivery-1')
+      .set('x-hub-signature-256', signGitHubPayload(secret, body))
+      .send(body);
+
+    expect(response.status).toBe(202);
+    expect(handle).toHaveBeenCalledOnce();
+  });
+
   it('rejects signed requests that are missing GitHub event headers', async () => {
     const response = await request(buildApp(handle))
       .post('/api/webhooks/github')
