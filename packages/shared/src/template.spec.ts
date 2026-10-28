@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractTemplateTokens, findUnknownTemplateTokens, renderTemplate } from './template.js';
+import { extractTemplateTokens, findUnknownTemplateTokens, renderTemplate, toTemplateToken } from './template.js';
 
 describe('extractTemplateTokens', () => {
   it('returns unique tokens and tolerates inner whitespace', () => {
@@ -29,5 +29,22 @@ describe('renderTemplate', () => {
 
   it('does not interpret template syntax inside substituted values', () => {
     expect(renderTemplate('{{a}}', { a: '{{b}}', b: 'leak' })).toBe('{{b}}');
+  });
+
+  it('never resolves inherited object properties', () => {
+    expect(renderTemplate('[{{constructor}}][{{__proto__}}][{{toString}}]', { a: 1 })).toBe('[][][]');
+  });
+
+  it('leaves expression-like placeholders untouched instead of evaluating them', () => {
+    const template = '{{ a + b }} {{a()}} {{a[0]}} ${a}';
+
+    expect(renderTemplate(template, { a: 'x', b: 'y' })).toBe(template);
+    expect(extractTemplateTokens(template)).toEqual([]);
+  });
+});
+
+describe('toTemplateToken', () => {
+  it('round-trips through extraction', () => {
+    expect(extractTemplateTokens(toTemplateToken('pull_request.title'))).toEqual(['pull_request.title']);
   });
 });

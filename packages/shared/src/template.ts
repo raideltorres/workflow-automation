@@ -17,7 +17,7 @@ export function findUnknownTemplateTokens(template: string, allowedKeys: readonl
 
 export function renderTemplate(template: string, data: TemplateData): string {
   return template.replace(TOKEN_PATTERN, (_match, key: string) => {
-    const value = data[key];
+    const value = Object.hasOwn(data, key) ? data[key] : undefined;
     return value === null || value === undefined ? '' : String(value);
   });
 }
