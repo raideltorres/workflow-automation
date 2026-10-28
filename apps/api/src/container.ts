@@ -33,17 +33,29 @@ export interface Container {
   readonly webhookController: WebhookController;
 }
 
-export function createContainer(config: AppConfig, logger: Logger, db: typeof mongoose): Container {
+export interface ContainerOverrides {
+  readonly githubGateway?: GitHubGateway;
+}
+
+export function oauthCallbackUrl(webUrl: string): string {
+  return `${webUrl}/api/auth/github/callback`;
+}
+
+export function createContainer(
+  config: AppConfig,
+  logger: Logger,
+  db: typeof mongoose,
+  overrides: ContainerOverrides = {},
+): Container {
   const sessionStore = MongoStore.create({
     client: db.connection.getClient(),
     dbName: config.mongo.dbName,
     collectionName: 'sessions',
   });
 
-  const githubGateway = new OctokitGitHubGateway({
-    ...config.github,
-    callbackUrl: `${config.webUrl}/api/auth/github/callback`,
-  });
+  const githubGateway =
+    overrides.githubGateway ??
+    new OctokitGitHubGateway({ ...config.github, callbackUrl: oauthCallbackUrl(config.webUrl) });
 
   const users = new UserRepository();
   const githubRepository = new GitHubRepository();
