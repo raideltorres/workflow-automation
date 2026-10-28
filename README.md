@@ -142,10 +142,62 @@ Open <http://localhost:4200>.
 |---|---|
 | `docker compose up -d` | Start local MongoDB (also `npm run db`) |
 | `npm run dev` | Shared watcher, API, web and smee together |
-| `npm test` | All unit tests (shared, API, web) |
+| `npm test` / `npm run test:unit` | All unit tests (shared, API, web). No database needed |
+| `npm run test:integration` | API integration tests against MongoDB (needs `npm run db`) |
+| `npm run test:e2e` | Playwright browser tests (needs `npm run db`; starts its own API and web servers) |
+| `npm run test:coverage` | Unit + integration tests with coverage thresholds (needs `npm run db`) |
 | `npm run lint` | ESLint across the monorepo |
-| `npm run typecheck` | Type-check every workspace |
+| `npm run typecheck` | Type-check every workspace, specs and E2E tests included |
 | `npm run build` | Production builds of shared, API and web |
+
+## Testing
+
+| Layer | Tooling | What it proves |
+|---|---|---|
+| Unit | Vitest (shared, API), Angular unit-test builder with Vitest + jsdom (web) | Templating, schemas, webhook verification and normalization, executor, services, guards, interceptor and components, with every collaborator mocked |
+| Integration | Vitest + Supertest, real MongoDB | HTTP routes, sessions and the OAuth flow, ownership checks, webhook → run → comment, idempotency, indexes and persistence |
+| E2E | Playwright (Chromium) | A user signs in, builds and edits Zaps in the real UI, a signed webhook produces a comment and a run in the history, and a second user cannot see or change the first user's Zaps |
+
+**No real GitHub in automated tests.** The `GitHubGateway` interface is the only boundary to GitHub. Tests inject
+`FakeGitHubGateway` (`apps/api/test/support`) through the container's `overrides` argument. It maps OAuth codes to
+seeded accounts and records comments. Everything else is the production code path: OAuth state checks, session
+rotation, HMAC verification, the registry, the executor and Mongo.
+
+**Test-only code never ships.** The E2E API (`apps/api/test/e2e/server.ts`) wraps the real app with a control
+router under `/api/__e2e`, used to reset data, queue the next sign-in and read recorded comments. It lives under
+`test/`, and `tsconfig.build.json` only compiles `src/`, so the production build cannot include it. The web app has
+no test hooks at all.
+
+**Isolated databases.** Integration tests use `workflow-automation-integration` and E2E tests use
+`workflow-automation-e2e`, on the same local MongoDB as development. The test helpers refuse any database whose name
+does not end in `-integration` or `-e2e`, so a test run cannot wipe development data. Override the server with
+`MONGODB_TEST_URI`.
+
+**Coverage.** V8 coverage with thresholds that fail the run: 80% lines and 75% branches for the API and web, and 90%
+lines and 85% branches for the shared package. HTML reports are written to `<workspace>/coverage`.
+
+**CI.** `.github/workflows/ci.yml` runs lint, typecheck and unit tests, then integration tests with coverage and
+Playwright against a MongoDB service container. It needs no secrets.
+
+### Manual smoke test against real GitHub
+
+The automated suites never call GitHub. Before a demo, verify the real integration once:
+
+1. `npm run db`, then `npm run dev`. The smee forwarder logs that it is connected.
+2. Sign in at <http://localhost:4200>. You land on **Zaps** with your avatar in the toolbar.
+3. Open the builder and use **Install the GitHub App on more repositories** to install it on a test repository. The
+   repository then appears in the **Repository** dropdown.
+4. Create a Zap: Pull request opened on that repository, a comment using at least two field chips, switched **On**.
+5. Open a pull request on that repository. Within a few seconds:
+   - the smee forwarder and the API log a `pull_request` delivery answered with `202`;
+   - the bot comments on the PR, with the fields filled in;
+   - **Run history** (use **Refresh**) shows `succeeded`, the PR number and title, and a working **View comment**
+     link.
+6. In the GitHub App's settings, open **Advanced → Recent deliveries** and redeliver the same delivery. No second
+   comment appears.
+7. Switch the Zap **Off** and open another PR. No comment and no new run.
+8. Sign in as a second GitHub account in a private window. The first account's Zaps are not listed, and opening one
+   by URL shows **Zap not found**.
 
 ## Design decisions and tradeoffs
 
