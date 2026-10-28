@@ -5,6 +5,8 @@
 
 @if (loading()) {
   <mat-progress-bar mode="indeterminate" />
+} @else if (loadError(); as message) {
+  <p class="form-error" role="alert">{{ message }}</p>
 } @else {
   <form [formGroup]="form" (ngSubmit)="save()" class="form" novalidate>
     <mat-card appearance="outlined">

@@ -264,6 +264,7 @@ describe('ZapEditorPage', () => {
 
       expect(ctx.formError()).toBe('Zap not found');
       expect(ctx.element.querySelector('mat-progress-bar')).toBeNull();
+      expect(ctx.element.querySelector('form')).toBeNull();
     });
   });
 });

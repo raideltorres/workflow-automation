@@ -92,6 +92,7 @@ export class ZapEditorPage implements OnInit {
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly formError = signal<string | null>(null);
+  protected readonly loadError = signal<string | null>(null);
   protected readonly isEdit = computed(() => this.id() !== undefined);
 
   // Declared before the form: the body validator reads outputFields as soon as the control is created.
@@ -135,7 +136,7 @@ export class ZapEditorPage implements OnInit {
       },
       error: (error: unknown) => {
         this.loading.set(false);
-        this.formError.set(toErrorMessage(error, 'Could not load the Zap builder'));
+        this.loadError.set(toErrorMessage(error, 'Could not load the Zap builder'));
       },
     });
   }
