@@ -1,0 +1,30 @@
+---
+description: TypeScript conventions shared by API, web and shared packages
+globs: **/*.ts
+alwaysApply: false
+---
+
+# TypeScript
+
+- `strict: true`. No `any`; use `unknown` and narrow. No non-null `!` unless the invariant is proven nearby.
+- Derive types from schemas (`z.infer<typeof ZapSchema>`) instead of duplicating interfaces.
+- Model variants with discriminated unions and exhaustive `switch` (`assertNever`).
+- `readonly` for inputs and config; avoid mutating arguments.
+- Prefer `type` for unions/aliases, `interface` for object contracts implemented by classes.
+- Named exports only; no default exports (except where a framework requires them).
+- Import order: node built-ins, external, workspace (`@workflow/shared`), relative.
+- File names: `kebab-case.ts` with role suffix (`zap.service.ts`, `zap.repository.ts`, `zap-list.component.ts`).
+
+```ts
+// ❌ BAD
+function handle(e: any) { return e.data.id; }
+
+// ✅ GOOD
+function handle(event: PullRequestOpenedEvent): number {
+  return event.pullRequest.number;
+}
+```
+
+## Errors
+- Throw typed domain errors (`NotFoundError`, `ForbiddenError`, `ValidationError`) extending a base `AppError` with an HTTP status; never throw strings.
+- Wrap third-party failures with context and `{ cause }`.

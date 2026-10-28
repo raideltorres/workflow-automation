@@ -1,0 +1,20 @@
+---
+description: Unit and integration testing conventions
+globs: **/*.spec.ts
+alwaysApply: false
+---
+
+# Testing
+
+- Arrange / Act / Assert, one behavior per test, names read as specs: `it('skips disabled zaps')`.
+- Strictly mock external dependencies (GitHub API, Mongo repositories, LLM, clock). Unit tests never hit the network or DB.
+- Mock at the injected interface, not the module system, when the class uses constructor DI.
+- Test behavior through the public API, not private methods or implementation details.
+- Cover the edges that matter: invalid signature, duplicate delivery, unknown template path, foreign `ownerId`.
+- Build fixtures with small factory functions (`buildZap({ enabled: false })`) instead of copy-pasted objects.
+
+```ts
+// ✅ GOOD
+const github = { createComment: vi.fn().mockResolvedValue({ url: 'u' }) } satisfies Partial<GitHubClient>;
+const action = new CommentOnPullRequestAction(github as GitHubClient);
+```

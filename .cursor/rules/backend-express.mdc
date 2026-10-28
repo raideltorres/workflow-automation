@@ -1,0 +1,35 @@
+---
+description: Express API architecture, layering, validation and security conventions
+globs: apps/api/**
+alwaysApply: false
+---
+
+# Express API
+
+## Layering (feature modules under `src/modules/<feature>/`)
+- `*.routes.ts`: HTTP wiring only (path, middleware, controller method).
+- `*.controller.ts`: parse/validate input, call service, shape response. No business logic, no DB access.
+- `*.service.ts`: business rules. Framework-agnostic (no `req`/`res`).
+- `*.repository.ts`: the only layer touching Mongoose models. Returns plain domain objects (`.lean()`), not documents.
+- Cross-cutting code in `src/core/` (config, logger, errors, middleware, db, crypto).
+
+## Dependency injection
+- Constructor injection of interfaces. All wiring lives in `src/container.ts`. No `new` of collaborators inside classes, no module-level singletons imported by services.
+
+```ts
+// ✅ GOOD
+export class ZapService {
+  constructor(private readonly zaps: ZapRepository, private readonly catalog: CatalogRegistry) {}
+}
+```
+
+## Validation & errors
+- Validate every body/query/param with Zod schemas from `@workflow/shared` via a `validate()` middleware.
+- Throw `AppError` subclasses; one error middleware maps them to `{ error: { code, message } }`. Never leak stack traces or upstream payloads.
+- Express 5: async handlers may throw; do not add try/catch just to call `next(err)`.
+
+## Security
+- Env read once through a Zod-validated `config`; fail fast at boot. Never read `process.env` elsewhere.
+- Every Zap query is scoped by `ownerId` from the session. Never trust ids from the client for ownership.
+- Webhooks: verify `X-Hub-Signature-256` with `crypto.timingSafeEqual` over the **raw** body; dedupe on `X-GitHub-Delivery`; respond fast (202).
+- Tokens encrypted at rest; never logged. Use the structured logger (pino) with redaction, never `console`.

@@ -1,0 +1,12 @@
+---
+description: Git and commit conventions
+alwaysApply: true
+---
+
+# Git Workflow
+
+- Feature branches off `main` (`feat/…`, `fix/…`, `chore/…`, `docs/…`), merged through a PR.
+- Conventional Commits with scope: `feat(engine): verify webhook signatures`.
+- Small, focused commits: one concern each, the build passes at every commit.
+- Never commit secrets: `.env`, `*.pem`, tokens, connection strings. Keep `.env.example` updated instead.
+- Run lint and tests before pushing.

@@ -1,0 +1,40 @@
+---
+description: Angular conventions (standalone, signals, OnPush, typed forms, feature structure)
+globs: apps/web/**
+alwaysApply: false
+---
+
+# Angular
+
+## Structure
+- `src/app/core/`: singletons (auth, http interceptors, guards, api client). Imported only by the app shell/routes.
+- `src/app/shared/`: reusable presentational components, pipes, directives. No feature imports.
+- `src/app/features/<feature>/`: lazy-loaded routes, `pages/` (smart) and `components/` (presentational).
+
+## Components
+- Standalone only, `changeDetection: ChangeDetectionStrategy.OnPush`.
+- `inject()` over constructor params; `input()` / `output()` / `model()` signal APIs.
+- Built-in control flow (`@if`, `@for` with `track`, `@switch`). No `*ngIf`/`*ngFor`.
+- Presentational components: inputs in, outputs out, no services. Smart pages own data fetching.
+- No logic in templates beyond simple expressions; derive with `computed()`.
+
+## State & data
+- Feature state in an injectable service exposing readonly signals (`asReadonly()`), mutating via methods.
+- HTTP lives in `*-api.service.ts` returning typed observables/`resource`; convert with `toSignal` at the edge.
+- Use shared types from `@workflow/shared`; never redeclare API DTOs.
+- Unsubscribe automatically (`takeUntilDestroyed`, `toSignal`); no manual subscription bookkeeping.
+
+## Forms
+- Typed reactive forms (`FormBuilder.nonNullable`), validators mirror the shared Zod rules.
+
+```ts
+// ✅ GOOD
+@Component({ selector: 'app-zap-card', changeDetection: ChangeDetectionStrategy.OnPush, template: `...` })
+export class ZapCardComponent {
+  readonly zap = input.required<Zap>();
+  readonly toggled = output<boolean>();
+}
+```
+
+## Style
+- SCSS per component, design tokens via CSS variables; no inline styles. Accessible labels on every control.

@@ -1,0 +1,13 @@
+---
+description: Rules for the shared contracts package used by API and web
+globs: packages/shared/**
+alwaysApply: false
+---
+
+# Shared Contracts (`@workflow/shared`)
+
+- Single source of truth for DTOs, Zod schemas, catalog ids, and constants used by more than one app.
+- Export schema + inferred type together: `export const ZapSchema = z.object(...); export type Zap = z.infer<typeof ZapSchema>;`
+- No runtime dependencies besides `zod`. No Node-only or Angular-only APIs (must run in both).
+- No business logic or I/O. Pure data definitions and tiny pure helpers (e.g. template token parsing) only.
+- Changing a schema is a contract change: update API and web in the same commit.

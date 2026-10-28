@@ -1,0 +1,34 @@
+---
+description: Core clean-code principles (DRY, SOLID, KISS) for every file in the repo
+alwaysApply: true
+---
+
+# Core Principles
+
+## Design
+- **Single responsibility**: a module/class/function has one reason to change. Split when a name needs "and".
+- **Open/closed**: extend via registries and strategies (e.g. new trigger/action definitions), not by adding `if (app === ...)` branches.
+- **Dependency inversion**: depend on interfaces; wire concrete implementations in one composition root.
+- **DRY with judgment**: extract on the second real duplication of *knowledge*, not of similar-looking lines. Shared contracts live in `packages/shared`.
+- **KISS / YAGNI**: build for the current requirement; leave an extension point, not a framework.
+
+## Code
+- Functions small and named by intent; prefer early returns over nested conditionals.
+- No magic strings/numbers: use named constants or enums from a single place.
+- Pure functions for logic (templating, matching, mapping); side effects at the edges.
+- No dead code, commented-out code, or `console.log` left behind.
+- Errors are never swallowed: handle, wrap with context, or rethrow.
+
+```ts
+// ❌ BAD
+if (zap.trigger.app === 'github' && zap.trigger.event === 'pull_request.opened') { /* ... */ }
+
+// ✅ GOOD
+const trigger = triggerRegistry.get(zap.trigger.app, zap.trigger.event);
+```
+
+## Comments
+- Explain *why* or a non-obvious constraint only. Never narrate what the next line does.
+
+## Reuse
+- Before writing a helper, search for an existing one. Generic helpers go in a `shared/` or `utils/` folder of the owning app; cross-app contracts go in `packages/shared`.
