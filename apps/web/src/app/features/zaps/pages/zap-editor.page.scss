@@ -1,0 +1,65 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.basics {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-top: 16px;
+
+  .name {
+    flex: 1;
+  }
+}
+
+.step {
+  display: grid;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+.hint {
+  margin: -8px 0 0;
+  font-size: 13px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.form-error {
+  color: var(--mat-sys-error);
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.runs {
+  margin-top: 32px;
+}
+
+.runs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+  }
+}
