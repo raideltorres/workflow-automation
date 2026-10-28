@@ -55,7 +55,7 @@ export class ZapRepository {
   async updateOwned(id: string, ownerId: string, data: ZapWriteData): Promise<ZapRecord | null> {
     if (!isValidObjectId(id)) return null;
     const doc = await ZapModel.findOneAndUpdate({ _id: id, ownerId }, toDocument(data), {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     }).lean<ZapLean>();
     return doc ? toRecord(doc) : null;

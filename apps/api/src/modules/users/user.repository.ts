@@ -41,7 +41,7 @@ export class UserRepository {
         repositoryIds,
         accessSyncedAt: new Date(),
       },
-      { upsert: true, new: true, lean: true },
+      { upsert: true, returnDocument: 'after', lean: true },
     );
     return toRecord(doc as UserLean);
   }
