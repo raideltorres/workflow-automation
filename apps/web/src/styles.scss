@@ -11,6 +11,12 @@ html {
   );
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body {
   height: 100%;
@@ -19,6 +25,7 @@ body {
 body {
   margin: 0;
   font-family: Roboto, 'Helvetica Neue', sans-serif;
-  background: var(--mat-sys-surface);
+  background: var(--mat-sys-surface-container-lowest);
   color: var(--mat-sys-on-surface);
+  -webkit-font-smoothing: antialiased;
 }
