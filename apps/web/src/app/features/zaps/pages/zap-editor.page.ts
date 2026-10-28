@@ -94,10 +94,19 @@ export class ZapEditorPage implements OnInit {
   protected readonly formError = signal<string | null>(null);
   protected readonly isEdit = computed(() => this.id() !== undefined);
 
+  // Declared before the form: the body validator reads outputFields as soon as the control is created.
+  private readonly triggerKeyControl = this.fb.control<TriggerKey>(DEFAULT_TRIGGER, Validators.required);
+  private readonly triggerKey: Signal<TriggerKey> = toSignal(this.triggerKeyControl.valueChanges, {
+    initialValue: this.triggerKeyControl.value,
+  });
+  protected readonly outputFields: Signal<readonly OutputField[]> = computed(
+    () => findTrigger(this.triggerKey()).outputFields,
+  );
+
   protected readonly form = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(ZAP_NAME_MAX_LENGTH)]],
     enabled: [false],
-    triggerKey: this.fb.control<TriggerKey>(DEFAULT_TRIGGER, Validators.required),
+    triggerKey: this.triggerKeyControl,
     repositoryId: new FormControl<number | null>(null, Validators.required),
     actionKey: this.fb.control<ActionKey>(DEFAULT_ACTION, Validators.required),
     body: [
@@ -109,13 +118,6 @@ export class ZapEditorPage implements OnInit {
       ],
     ],
   });
-
-  private readonly triggerKey: Signal<TriggerKey> = toSignal(this.form.controls.triggerKey.valueChanges, {
-    initialValue: this.form.controls.triggerKey.value,
-  });
-  protected readonly outputFields: Signal<readonly OutputField[]> = computed(
-    () => findTrigger(this.triggerKey()).outputFields,
-  );
 
   ngOnInit(): void {
     const id = this.id();
