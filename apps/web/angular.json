@@ -70,7 +70,13 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "coverageInclude": ["src/app/**/*.ts"],
+            "coverageExclude": ["src/**/*.spec.ts", "src/app/app.config.ts"],
+            "coverageReporters": ["text-summary", "text", "html", "lcovonly"],
+            "coverageThresholds": { "lines": 80, "branches": 75 }
+          }
         }
       }
     }
