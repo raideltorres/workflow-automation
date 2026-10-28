@@ -17,8 +17,12 @@
     "dev": "npm run build:shared && concurrently -n shared,api,web,smee -c gray,blue,magenta,yellow \"npm run dev -w @workflow/shared\" \"npm run dev -w @workflow/api\" \"npm run start -w @workflow/web\" \"npm run smee -w @workflow/api\"",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "npm run build:shared && npm run test --workspaces --if-present",
-    "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present"
+    "test": "npm run test:unit",
+    "test:unit": "npm run build:shared && npm run test --workspaces --if-present",
+    "test:integration": "npm run build:shared && npm run test:integration -w @workflow/api",
+    "test:e2e": "npm run build:shared && playwright test",
+    "test:coverage": "npm run build:shared && npm run test:coverage --workspaces --if-present",
+    "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present && tsc -p e2e/tsconfig.json"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

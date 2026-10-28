@@ -6,6 +6,8 @@ dist/
 out-tsc/
 .angular/
 coverage/
+test-results/
+playwright-report/
 
 # Environment and secrets
 .env

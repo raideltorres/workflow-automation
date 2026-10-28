@@ -6,8 +6,10 @@
     "ng": "ng",
     "start": "ng serve --proxy-config proxy.conf.json",
     "build": "ng build",
+    "start:e2e": "ng serve --proxy-config proxy.e2e.conf.json",
     "test": "ng test --watch=false",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+    "test:coverage": "ng test --watch=false --coverage",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit"
   },
   "dependencies": {
     "@angular/cdk": "^22.2.4",

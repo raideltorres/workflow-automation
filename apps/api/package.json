@@ -8,7 +8,10 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=.env dist/main.js",
     "smee": "node --env-file-if-exists=.env scripts/smee.mjs",
-    "test": "vitest run",
+    "start:e2e": "tsx test/e2e/server.ts",
+    "test": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
