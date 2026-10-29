@@ -5,6 +5,7 @@ import { createApp } from '../../src/app.js';
 import { createContainer } from '../../src/container.js';
 import type { AppConfig } from '../../src/core/config.js';
 import { createLogger } from '../../src/core/logger.js';
+import type { CopilotGateway } from '../../src/integrations/openai/copilot.gateway.js';
 import { FakeGitHubGateway } from './fake-github.gateway.js';
 
 export const TEST_WEBHOOK_SECRET = 'test-webhook-secret';
@@ -35,7 +36,15 @@ export interface TestApp {
   readonly config: AppConfig;
 }
 
-export function createTestApp(db: typeof mongoose, config: AppConfig, github = new FakeGitHubGateway()): TestApp {
-  const container = createContainer(config, createLogger(config.env), db, { githubGateway: github });
+export function createTestApp(
+  db: typeof mongoose,
+  config: AppConfig,
+  github = new FakeGitHubGateway(),
+  copilot?: CopilotGateway,
+): TestApp {
+  const container = createContainer(config, createLogger(config.env), db, {
+    githubGateway: github,
+    copilotGateway: copilot,
+  });
   return { app: createApp(container), github, config };
 }

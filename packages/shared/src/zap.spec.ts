@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { COMMENT_BODY_MAX_LENGTH, ZAP_NAME_MAX_LENGTH, ZapInputSchema, ZapPatchSchema } from './zap.js';
+import {
+  COMMENT_BODY_MAX_LENGTH,
+  COPILOT_PROMPT_MAX_LENGTH,
+  CopilotZapDraftRequestSchema,
+  CopilotZapDraftSchema,
+  ZAP_NAME_MAX_LENGTH,
+  ZapInputSchema,
+  ZapPatchSchema,
+} from './zap.js';
 
 const validInput = {
   name: 'Thank contributors',
@@ -88,5 +96,26 @@ describe('ZapPatchSchema', () => {
   it('still validates the fields that are present', () => {
     expect(ZapPatchSchema.safeParse({ name: '' }).success).toBe(false);
     expect(ZapPatchSchema.safeParse({ enabled: 'yes' }).success).toBe(false);
+  });
+});
+
+describe('Copilot draft schemas', () => {
+  it('trims and validates the prompt plus the selected repository', () => {
+    expect(CopilotZapDraftRequestSchema.parse({ prompt: '  thank authors  ', repositoryId: 1 })).toEqual({
+      prompt: 'thank authors',
+      repositoryId: 1,
+    });
+    expect(CopilotZapDraftRequestSchema.safeParse({ prompt: '', repositoryId: 1 }).success).toBe(false);
+    expect(
+      CopilotZapDraftRequestSchema.safeParse({ prompt: 'x'.repeat(COPILOT_PROMPT_MAX_LENGTH + 1), repositoryId: 1 })
+        .success,
+    ).toBe(false);
+    expect(CopilotZapDraftRequestSchema.safeParse({ prompt: 'draft', repositoryId: 0 }).success).toBe(false);
+  });
+
+  it('requires a bounded non-empty name and comment from the provider', () => {
+    expect(CopilotZapDraftSchema.safeParse({ name: 'Draft', comment: 'Thanks!' }).success).toBe(true);
+    expect(CopilotZapDraftSchema.safeParse({ name: ' ', comment: 'Thanks!' }).success).toBe(false);
+    expect(CopilotZapDraftSchema.safeParse({ name: 'Draft', comment: ' ' }).success).toBe(false);
   });
 });

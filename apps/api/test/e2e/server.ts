@@ -1,6 +1,7 @@
 import express, { type Router } from 'express';
 
 import type { GitHubUserAccess } from '../../src/integrations/github/github.gateway.js';
+import { FakeCopilotGateway } from '../support/fake-copilot.gateway.js';
 import { FakeGitHubGateway } from '../support/fake-github.gateway.js';
 import { buildTestConfig, createTestApp } from '../support/test-app.js';
 import { clearDatabase, connectTestDatabase } from '../support/test-database.js';
@@ -59,7 +60,7 @@ async function start(): Promise<void> {
   await clearDatabase();
 
   const github = new FakeGitHubGateway(`${WEB_URL}${CONTROL_PREFIX}/github/authorize`);
-  const { app } = createTestApp(db, buildTestConfig(DB_NAME, WEB_URL), github);
+  const { app } = createTestApp(db, buildTestConfig(DB_NAME, WEB_URL), github, new FakeCopilotGateway());
 
   const server = express();
   server.use(CONTROL_PREFIX, createControlRouter(github, WEB_URL));

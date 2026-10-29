@@ -51,6 +51,24 @@ test('creates a GitHub "PR opened → comment" Zap in the builder', async ({ pag
   await expect(card.getByRole('switch', { name: 'Enable Welcome contributors' })).toBeChecked();
 });
 
+test('drafts a disabled Zap with Copilot and opens it for review', async ({ page }) => {
+  await signInAs(page, alice);
+  await page.goto('/zaps/new');
+
+  await page.getByRole('combobox', { name: 'Repository' }).click();
+  await page.getByRole('option', { name: 'acme/webapp' }).click();
+  await page.getByLabel('What should this Zap do?').fill('Thank people who open a pull request');
+  await page.getByRole('button', { name: 'Draft Zap' }).click();
+
+  await expect(page.getByText('Copilot created a disabled draft for your review')).toBeVisible();
+  await expect(page).toHaveURL(/\/zaps\/[a-f0-9]{24}$/);
+  await expect(page.getByLabel('Zap name')).toHaveValue('Welcome contributors');
+  await expect(page.getByRole('textbox', { name: 'Comment' })).toHaveValue(
+    'Thanks @{{pull_request.author}} for opening "{{pull_request.title}}"!',
+  );
+  await expect(page.getByRole('switch')).not.toBeChecked();
+});
+
 test('edits and toggles a Zap and the changes survive a reload', async ({ page }) => {
   await signInAs(page, alice);
   const id = await createZapAsCurrentUser(page, {

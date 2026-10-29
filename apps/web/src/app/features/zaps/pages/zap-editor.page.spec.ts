@@ -48,7 +48,7 @@ async function setup(id?: string) {
   };
   const nameInput = () => loader.getHarness(MatInputHarness.with({ selector: '[formControlName="name"]' }));
   const select = (label: string) => loader.getHarness(MatSelectHarness.with({ selector: `[formControlName="${label}"]` }));
-  const textarea = () => element.querySelector('textarea') as HTMLTextAreaElement;
+  const textarea = () => element.querySelector('#zap-comment-body') as HTMLTextAreaElement;
   const typeBody = async (value: string) => {
     textarea().value = value;
     textarea().dispatchEvent(new Event('input'));
@@ -108,7 +108,9 @@ describe('ZapEditorPage', () => {
       const ctx = await setup();
       await ctx.load();
 
-      expect((ctx.element.querySelector('textarea') as HTMLTextAreaElement).value).toContain('{{pull_request.author}}');
+      expect((ctx.element.querySelector('#zap-comment-body') as HTMLTextAreaElement).value).toContain(
+        '{{pull_request.author}}',
+      );
       const chips = [...ctx.element.querySelectorAll('mat-chip')].map((c) => c.textContent?.trim());
       expect(chips).toEqual(expect.arrayContaining(['PR author', 'PR title', 'PR number', 'Repository']));
     });
@@ -192,6 +194,39 @@ describe('ZapEditorPage', () => {
       expect(ctx.element.querySelector('h1')?.textContent).toBe('Create Zap');
       expect(ctx.element.querySelector('app-zap-run-list')).toBeNull();
     });
+
+    it('asks Copilot for a disabled draft using the selected repository', async () => {
+      const ctx = await setup();
+      await ctx.load();
+
+      await (await ctx.select('repositoryId')).clickOptions({ text: 'acme/app' });
+      const prompt = ctx.element.querySelector('[formControlName="copilotPrompt"]') as HTMLTextAreaElement;
+      prompt.value = 'Thank people who open a PR';
+      prompt.dispatchEvent(new Event('input'));
+      await ctx.fixture.whenStable();
+
+      [...ctx.element.querySelectorAll('button')].find((button) => button.textContent?.includes('Draft Zap'))!.click();
+      const request = ctx.http.expectOne('/api/copilot/zap-drafts');
+      expect(request.request.body).toEqual({ prompt: 'Thank people who open a PR', repositoryId: 100 });
+      request.flush(buildZap({ id: 'draft-1', enabled: false }));
+      await ctx.fixture.whenStable();
+
+      expect(ctx.snackBar.open).toHaveBeenCalledWith('Copilot created a disabled draft for your review', 'Dismiss', {
+        duration: 4000,
+      });
+      expect(ctx.navigate).toHaveBeenCalledWith(['/zaps', 'draft-1']);
+    });
+
+    it('does not call Copilot without a prompt and repository', async () => {
+      const ctx = await setup();
+      await ctx.load();
+
+      [...ctx.element.querySelectorAll('button')].find((button) => button.textContent?.includes('Draft Zap'))!.click();
+      await ctx.fixture.whenStable();
+
+      expect(ctx.formError()).toBe('Describe the automation you want Copilot to draft');
+      ctx.http.expectNone('/api/copilot/zap-drafts');
+    });
   });
 
   describe('editing a zap', () => {
@@ -203,7 +238,9 @@ describe('ZapEditorPage', () => {
       expect(await (await ctx.nameInput()).getValue()).toBe('Thank contributors');
       expect(await (await ctx.select('repositoryId')).getValueText()).toBe('acme/app');
       expect(await (await ctx.loader.getHarness(MatSlideToggleHarness)).isChecked()).toBe(true);
-      expect((ctx.element.querySelector('textarea') as HTMLTextAreaElement).value).toBe('Thanks @{{pull_request.author}}!');
+      expect((ctx.element.querySelector('#zap-comment-body') as HTMLTextAreaElement).value).toBe(
+        'Thanks @{{pull_request.author}}!',
+      );
       expect(ctx.element.querySelector('app-zap-run-list tbody tr')?.textContent).toContain('#42 Add login');
     });
 
