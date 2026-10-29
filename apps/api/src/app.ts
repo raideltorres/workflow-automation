@@ -4,13 +4,12 @@ import { pinoHttp } from 'pino-http';
 
 import type { Container } from './container.js';
 import { createErrorHandler, notFoundHandler } from './core/middleware/error-handler.js';
+import { SESSION_COOKIE_NAME, sessionCookieOptions } from './core/session-cookie.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createCopilotRouter } from './modules/copilot/copilot.routes.js';
 import { createGitHubRouter } from './modules/github/github.routes.js';
 import { createWebhookRouter } from './modules/webhooks/webhook.routes.js';
 import { createZapRouter } from './modules/zaps/zap.routes.js';
-
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function createApp(container: Container): Express {
   const { config, logger, sessionStore } = container;
@@ -29,17 +28,12 @@ export function createApp(container: Container): Express {
   app.use(express.json({ limit: '100kb' }));
   app.use(
     session({
-      name: 'wa.sid',
+      name: SESSION_COOKIE_NAME,
       secret: config.sessionSecret,
       store: sessionStore,
       resave: false,
       saveUninitialized: false,
-      cookie: {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: config.env === 'production',
-        maxAge: SESSION_MAX_AGE_MS,
-      },
+      cookie: sessionCookieOptions(config.env),
     }),
   );
 
