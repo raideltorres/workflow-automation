@@ -12,6 +12,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -58,6 +59,7 @@ const DEFAULT_COMMENT = 'Thanks @{{pull_request.author}} for opening "{{pull_req
     RouterLink,
     MatButtonModule,
     MatCardModule,
+    MatIconModule,
     MatFormFieldModule,
     MatInputModule,
     MatProgressBarModule,
@@ -94,6 +96,8 @@ export class ZapEditorPage implements OnInit {
   protected readonly formError = signal<string | null>(null);
   protected readonly loadError = signal<string | null>(null);
   protected readonly isEdit = computed(() => this.id() !== undefined);
+  protected readonly pageTitle = computed(() => (this.isEdit() ? 'Edit Zap' : 'Create Zap'));
+  protected readonly hasRepositories = computed(() => this.repositories().length > 0);
 
   // Declared before the form: the body validator reads outputFields as soon as the control is created.
   private readonly triggerKeyControl = this.fb.control<TriggerKey>(DEFAULT_TRIGGER, Validators.required);
@@ -171,7 +175,10 @@ export class ZapEditorPage implements OnInit {
       action: { key: raw.actionKey, input: { body: raw.body } },
     });
     if (!parsed.success || this.form.invalid) {
-      this.formError.set(parsed.error?.issues[0]?.message ?? 'Please fix the highlighted fields');
+      const issue = parsed.success ? undefined : parsed.error.issues[0]?.message;
+      // The repository control is not on screen until one is available, so say what to do instead of the schema text.
+      const message = raw.repositoryId == null && raw.name.trim() ? 'Select a repository' : issue;
+      this.formError.set(message ?? 'Please fix the highlighted fields');
       return;
     }
 

@@ -19,12 +19,13 @@ import { type OutputField, renderTemplate, toTemplateToken } from '@workflow/sha
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatChipsModule],
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => TemplateEditorComponent), multi: true }],
+  styleUrl: './template-editor.component.scss',
   template: `
     <label class="label" [for]="inputId()">{{ label() }}</label>
     <textarea
       #textarea
       class="textarea"
-      rows="4"
+      rows="3"
       [id]="inputId()"
       [value]="value()"
       [disabled]="disabled()"
@@ -47,25 +48,10 @@ import { type OutputField, renderTemplate, toTemplateToken } from '@workflow/sha
 
     @if (value()) {
       <div class="preview">
-        <span class="hint">Preview with sample data</span>
+        <span class="preview-label">Preview with sample data</span>
         <p>{{ preview() }}</p>
       </div>
     }
-  `,
-  styles: `
-    :host { display: block; }
-    .label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
-    .textarea {
-      width: 100%; box-sizing: border-box; padding: 12px; font: inherit; resize: vertical;
-      border: 1px solid var(--mat-sys-outline); border-radius: 4px; background: var(--mat-sys-surface);
-      color: inherit;
-    }
-    .textarea:focus { outline: 2px solid var(--mat-sys-primary); border-color: transparent; }
-    .error { color: var(--mat-sys-error); font-size: 12px; margin: 4px 0 0; }
-    .hint { font-size: 12px; color: var(--mat-sys-on-surface-variant); margin: 12px 0 4px; }
-    mat-chip { cursor: pointer; }
-    .preview { margin-top: 12px; padding: 12px; border-radius: 4px; background: var(--mat-sys-surface-container); }
-    .preview p { margin: 4px 0 0; white-space: pre-wrap; }
   `,
 })
 export class TemplateEditorComponent implements ControlValueAccessor {

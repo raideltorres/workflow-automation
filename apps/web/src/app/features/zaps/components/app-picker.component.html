@@ -1,0 +1,25 @@
+<div class="grid" role="radiogroup" [attr.aria-label]="label()">
+  @for (app of tiles(); track app.id) {
+    <button
+      type="button"
+      class="tile"
+      role="radio"
+      [class.selected]="app.id === selected()"
+      [attr.aria-checked]="app.id === selected()"
+      [disabled]="app.status !== 'available'"
+      [attr.title]="app.description"
+      (click)="selected.set(app.id)"
+    >
+      <span class="identity">
+        <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ app.icon }}</mat-icon>
+        <span class="name">{{ app.name }}</span>
+      </span>
+      @if (app.status === 'coming_soon') {
+        <span class="badge">Coming soon</span>
+      }
+    </button>
+  }
+</div>
+@if (selectedApp(); as app) {
+  <p class="caption">{{ app.description }}</p>
+}

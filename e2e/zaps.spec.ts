@@ -44,7 +44,7 @@ test('creates a GitHub "PR opened → comment" Zap in the builder', async ({ pag
   await expect(page.getByRole('heading', { name: 'Edit Zap' })).toBeVisible();
   await expect(page.getByText('No runs yet')).toBeVisible();
 
-  await page.getByRole('link', { name: '← All Zaps' }).click();
+  await page.getByRole('link', { name: 'All Zaps' }).click();
   const card = page.getByRole('listitem').filter({ hasText: 'Welcome contributors' });
   await expect(card).toContainText('Pull request opened in acme/webapp');
   await expect(card).toContainText('Comment on pull request');

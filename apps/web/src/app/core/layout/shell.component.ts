@@ -23,14 +23,7 @@ import { AuthService } from '../auth/auth.service';
       <router-outlet />
     </main>
   `,
-  styles: `
-    .toolbar { gap: 12px; border-bottom: 1px solid var(--mat-sys-outline-variant); }
-    .brand { font-weight: 600; color: inherit; text-decoration: none; }
-    .spacer { flex: 1; }
-    .avatar { width: 28px; height: 28px; border-radius: 50%; }
-    .login { font-size: 14px; }
-    .content { max-width: 1040px; margin: 0 auto; padding: 24px; }
-  `,
+  styleUrl: './shell.component.scss',
 })
 export class ShellComponent {
   protected readonly auth = inject(AuthService);

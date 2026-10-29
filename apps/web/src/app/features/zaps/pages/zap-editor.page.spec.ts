@@ -59,7 +59,7 @@ async function setup(id?: string) {
     (element.querySelector('button[type="submit"]') as HTMLButtonElement).click();
     await fixture.whenStable();
   };
-  const formError = () => element.querySelector('.form-error')?.textContent?.trim();
+  const formError = () => element.querySelector('.form-error span')?.textContent?.trim();
   return { fixture, http, element, loader, snackBar, navigate, load, nameInput, select, typeBody, save, formError };
 }
 

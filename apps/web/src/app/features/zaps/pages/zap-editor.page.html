@@ -1,112 +1,146 @@
-<header class="header">
-  <a mat-button routerLink="/zaps">← All Zaps</a>
-  <h1>{{ isEdit() ? 'Edit Zap' : 'Create Zap' }}</h1>
-</header>
-
 @if (loading()) {
   <mat-progress-bar mode="indeterminate" />
 } @else if (loadError(); as message) {
-  <p class="form-error" role="alert">{{ message }}</p>
+  <p class="form-error" role="alert"><span>{{ message }}</span></p>
 } @else {
-  <form [formGroup]="form" (ngSubmit)="save()" class="form" novalidate>
-    <mat-card appearance="outlined">
-      <mat-card-content class="basics">
-        <mat-form-field appearance="outline" class="name">
-          <mat-label>Zap name</mat-label>
-          <input matInput formControlName="name" maxlength="100" required />
-          @if (form.controls.name.hasError('required')) {
-            <mat-error>Name is required</mat-error>
-          }
-        </mat-form-field>
-        <mat-slide-toggle formControlName="enabled">{{ form.controls.enabled.value ? 'On' : 'Off' }}</mat-slide-toggle>
-      </mat-card-content>
-    </mat-card>
+  <div class="builder">
+    <form [formGroup]="form" (ngSubmit)="save()" class="form" novalidate>
+      <header class="header">
+        <div class="titles">
+          <a mat-button routerLink="/zaps" class="back">
+            <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">arrow_back</mat-icon>
+            All Zaps
+          </a>
+          <h1>{{ pageTitle() }}</h1>
+        </div>
+        <div class="header-actions">
+          <mat-slide-toggle formControlName="enabled">{{ form.controls.enabled.value ? 'On' : 'Off' }}</mat-slide-toggle>
+          <button mat-flat-button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save Zap' }}</button>
+        </div>
+      </header>
 
-    <mat-card appearance="outlined">
-      <mat-card-header>
-        <mat-card-title>1. Trigger</mat-card-title>
-        <mat-card-subtitle>When this happens…</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content class="step">
-        <app-app-picker [apps]="apps" [(selected)]="triggerApp" label="Trigger app" />
+      <mat-form-field appearance="outline" class="name" subscriptSizing="dynamic">
+        <mat-label>Zap name</mat-label>
+        <input matInput formControlName="name" maxlength="100" required />
+        @if (form.controls.name.hasError('required')) {
+          <mat-error>Name is required</mat-error>
+        }
+      </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Event</mat-label>
-          <mat-select formControlName="triggerKey">
-            @for (trigger of triggers(); track trigger.key) {
-              <mat-option [value]="trigger.key">{{ trigger.name }}</mat-option>
+      <mat-card appearance="outlined">
+        <mat-card-content class="step">
+          <div class="step-heading">
+            <span class="step-mark" aria-hidden="true">
+              <mat-icon fontSet="material-symbols-outlined">merge</mat-icon>
+            </span>
+            <div>
+              <h2>Trigger</h2>
+              <p>When this happens</p>
+            </div>
+          </div>
+
+          <app-app-picker [apps]="apps" [(selected)]="triggerApp" label="Trigger app" />
+
+          <div class="fields">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Event</mat-label>
+              <mat-select formControlName="triggerKey">
+                @for (trigger of triggers(); track trigger.key) {
+                  <mat-option [value]="trigger.key">{{ trigger.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            @if (hasRepositories()) {
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Repository</mat-label>
+                <mat-select formControlName="repositoryId">
+                  @for (repo of repositories(); track repo.id) {
+                    <mat-option [value]="repo.id">{{ repo.fullName }}{{ repo.private ? ' (private)' : '' }}</mat-option>
+                  }
+                </mat-select>
+                @if (form.controls.repositoryId.hasError('required')) {
+                  <mat-error>Select a repository</mat-error>
+                }
+              </mat-form-field>
             }
-          </mat-select>
-        </mat-form-field>
+          </div>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Repository</mat-label>
-          <mat-select formControlName="repositoryId">
-            @for (repo of repositories(); track repo.id) {
-              <mat-option [value]="repo.id">{{ repo.fullName }}{{ repo.private ? ' (private)' : '' }}</mat-option>
-            }
-          </mat-select>
-          @if (form.controls.repositoryId.hasError('required')) {
-            <mat-error>Select a repository</mat-error>
+          @if (hasRepositories()) {
+            <p class="hint">
+              @if (installUrl(); as url) {
+                <a [href]="url">Install the GitHub App on more repositories</a>
+                ·
+              }
+              <a [href]="signInUrl">Refresh repository access</a>
+            </p>
+          } @else {
+            <div class="callout">
+              <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">folder_off</mat-icon>
+              <div>
+                <p>The GitHub App is not installed on any repository you can access yet.</p>
+                <div class="callout-actions">
+                  @if (installUrl(); as url) {
+                    <a mat-stroked-button [href]="url">Install the GitHub App</a>
+                  }
+                  <a mat-button [href]="signInUrl">Refresh repository access</a>
+                </div>
+              </div>
+            </div>
           }
-        </mat-form-field>
+        </mat-card-content>
+      </mat-card>
 
-        <p class="hint">
-          @if (repositories().length === 0) {
-            The GitHub App is not installed on any repository you can access yet.
-          }
-          @if (installUrl(); as url) {
-            <a [href]="url">Install the GitHub App on more repositories</a> ·
-          }
-          <a [href]="signInUrl">Refresh repository access</a>
-        </p>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card appearance="outlined">
-      <mat-card-header>
-        <mat-card-title>2. Action</mat-card-title>
-        <mat-card-subtitle>…do this</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content class="step">
-        <app-app-picker [apps]="apps" [(selected)]="actionApp" label="Action app" />
-
-        <mat-form-field appearance="outline">
-          <mat-label>Action</mat-label>
-          <mat-select formControlName="actionKey">
-            @for (action of actions(); track action.key) {
-              <mat-option [value]="action.key">{{ action.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-
-        <app-template-editor
-          formControlName="body"
-          label="Comment"
-          inputId="zap-comment-body"
-          [fields]="outputFields()"
-          [error]="bodyError()"
-        />
-      </mat-card-content>
-    </mat-card>
-
-    @if (formError(); as message) {
-      <p class="form-error" role="alert">{{ message }}</p>
-    }
-
-    <div class="actions">
-      <a mat-button routerLink="/zaps">Cancel</a>
-      <button mat-flat-button type="submit" [disabled]="saving()">{{ saving() ? 'Saving…' : 'Save Zap' }}</button>
-    </div>
-  </form>
-
-  @if (isEdit()) {
-    <section class="runs">
-      <div class="runs-header">
-        <h2>Run history</h2>
-        <button mat-button type="button" (click)="refreshRuns()">Refresh</button>
+      <div class="connector" aria-hidden="true">
+        <mat-icon fontSet="material-symbols-outlined">arrow_downward</mat-icon>
       </div>
-      <app-zap-run-list [runs]="runs()" />
-    </section>
-  }
+
+      <mat-card appearance="outlined">
+        <mat-card-content class="step">
+          <div class="step-heading">
+            <span class="step-mark" aria-hidden="true">
+              <mat-icon fontSet="material-symbols-outlined">chat_bubble</mat-icon>
+            </span>
+            <div>
+              <h2>Action</h2>
+              <p>Do this</p>
+            </div>
+          </div>
+
+          <app-app-picker [apps]="apps" [(selected)]="actionApp" label="Action app" />
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Action</mat-label>
+            <mat-select formControlName="actionKey">
+              @for (action of actions(); track action.key) {
+                <mat-option [value]="action.key">{{ action.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <app-template-editor
+            formControlName="body"
+            label="Comment"
+            inputId="zap-comment-body"
+            [fields]="outputFields()"
+            [error]="bodyError()"
+          />
+        </mat-card-content>
+      </mat-card>
+
+      @if (formError(); as message) {
+        <p class="form-error" role="alert"><span>{{ message }}</span></p>
+      }
+    </form>
+
+    @if (isEdit()) {
+      <section class="runs">
+        <div class="runs-header">
+          <h2>Run history</h2>
+          <button mat-button type="button" (click)="refreshRuns()">Refresh</button>
+        </div>
+        <app-zap-run-list [runs]="runs()" />
+      </section>
+    }
+  </div>
 }
