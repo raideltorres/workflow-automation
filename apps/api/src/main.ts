@@ -2,6 +2,7 @@ import { createApp } from './app.js';
 import { createContainer } from './container.js';
 import { loadConfig } from './core/config.js';
 import { connectDatabase, disconnectDatabase } from './core/database.js';
+import { startHttpServer } from './core/http-server.js';
 import { createLogger } from './core/logger.js';
 
 async function bootstrap(): Promise<void> {
@@ -10,9 +11,7 @@ async function bootstrap(): Promise<void> {
   const db = await connectDatabase(config.mongo.uri, config.mongo.dbName, logger);
   const app = createApp(createContainer(config, logger, db));
 
-  const server = app.listen(config.port, () => {
-    logger.info({ port: config.port }, 'API listening');
-  });
+  const server = startHttpServer(app, config.port, logger);
 
   const shutdown = (signal: string): void => {
     logger.info({ signal }, 'Shutting down');
