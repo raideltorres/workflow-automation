@@ -8,9 +8,11 @@ The Zap that runs end to end is **pull request opened → comment on that pull r
 
 | | Time (UTC-5) |
 |---|---|
-| Started (read brief, planning) | 2026-10-27 23:00 |
-| Implementation started | 2026-10-27 23:30 |
-| Stopped | _fill in the actual stop time_ |
+| Started | 2026-10-27 23:00 |
+| Stopped | 2026-10-28 23:54 |
+| Active | 2 h 35 min |
+
+Active time is the span above minus breaks longer than 45 minutes with no commits. Those breaks were about 22 hours.
 
 ## Requirements
 
