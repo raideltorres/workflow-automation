@@ -134,7 +134,11 @@ describe('Authentication API', () => {
 
     const logout = await agent.post('/api/auth/logout').expect(204);
 
-    expect(sessionCookie(logout)).toMatch(/wa\.sid=;/);
+    const cleared = sessionCookie(logout) ?? '';
+    expect(cleared).toMatch(/wa\.sid=;/);
+    expect(cleared.toLowerCase()).toContain('httponly');
+    expect(cleared.toLowerCase()).toContain('samesite=lax');
+    expect(cleared.toLowerCase()).not.toMatch(/(?:^|;\s*)secure(?:;|$)/);
     expect(await sessions().countDocuments()).toBe(0);
     await agent.get('/api/auth/me').expect(401);
   });
