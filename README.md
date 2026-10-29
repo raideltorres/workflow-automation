@@ -200,6 +200,16 @@ lines and 85% branches for the shared package. HTML reports are written to `<wor
 **CI.** `.github/workflows/ci.yml` runs lint, typecheck and unit tests, then integration tests with coverage and
 Playwright against a MongoDB service container. It needs no secrets.
 
+### Verification status
+
+The automated suite was last run locally on 2026-10-28 with all checks passing: lint, typecheck, production builds,
+29 shared unit tests, 94 API unit tests, 59 web unit tests, 60 API integration tests, and 7 Playwright scenarios.
+V8 coverage was shared **100% lines / 92.85% branches**, API **98.27% / 91.16%**, and web **95.32% / 92.97%**.
+
+The real GitHub smoke test reached GitHub's login page from the local app, confirming the OAuth redirect. It was not
+completed: it requires manually signing in to GitHub and opening a real pull request. Live Copilot drafting was also
+not performed because `OPENAI_API_KEY` was not configured. Neither live integration is represented as passing here.
+
 ### Manual smoke test against real GitHub
 
 The automated suites never call GitHub. Before a demo, verify the real integration once:
