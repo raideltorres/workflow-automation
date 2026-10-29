@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type Mock } from 'vitest';
 
 import { ExternalServiceError } from '../../core/errors.js';
 import { OpenAiCopilotGateway } from './openai-copilot.gateway.js';
@@ -8,11 +8,17 @@ const validOutput = JSON.stringify({
   comment: 'Thanks @{{pull_request.author}}!',
 });
 
-function response(body: unknown, ok = true, status = 200): Response {
+type FetchMock = Mock<typeof fetch>;
+
+function response(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-function setup(fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response({ output_text: validOutput }))) {
+function mockedFetch(result: Promise<Response>): FetchMock {
+  return vi.fn<typeof fetch>().mockImplementation(() => result);
+}
+
+function setup(fetchImpl: FetchMock = mockedFetch(Promise.resolve(response({ output_text: validOutput })))) {
   return { fetchImpl, gateway: new OpenAiCopilotGateway('api-key', 'gpt-4o-mini', fetchImpl) };
 }
 
@@ -35,12 +41,12 @@ describe('OpenAiCopilotGateway', () => {
   });
 
   it('wraps network, HTTP, malformed JSON, missing output, and invalid drafts', async () => {
-    const cases: Array<[string, typeof fetch, string]> = [
-      ['network failure', vi.fn<typeof fetch>().mockRejectedValue(new Error('offline')), 'could not be reached'],
-      ['HTTP failure', vi.fn<typeof fetch>().mockResolvedValue(response({}, false, 429)), 'returned 429'],
-      ['malformed response', vi.fn<typeof fetch>().mockResolvedValue(new Response('not-json')), 'returned invalid JSON'],
-      ['no output', vi.fn<typeof fetch>().mockResolvedValue(response({ output: [] })), 'returned no structured output'],
-      ['invalid draft', vi.fn<typeof fetch>().mockResolvedValue(response({ output_text: '{"name":""}' })), 'returned an invalid Zap draft'],
+    const cases: Array<[string, FetchMock, string]> = [
+      ['network failure', mockedFetch(Promise.reject(new Error('offline'))), 'could not be reached'],
+      ['HTTP failure', mockedFetch(Promise.resolve(response({}, 429))), 'returned 429'],
+      ['malformed response', mockedFetch(Promise.resolve(new Response('not-json'))), 'returned invalid JSON'],
+      ['no output', mockedFetch(Promise.resolve(response({ output: [] }))), 'returned no structured output'],
+      ['invalid draft', mockedFetch(Promise.resolve(response({ output_text: '{"name":""}' }))), 'returned an invalid Zap draft'],
     ];
 
     for (const [, fetchImpl, message] of cases) {
