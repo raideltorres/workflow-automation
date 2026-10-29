@@ -1,10 +1,8 @@
 # Workflow Automation
 
-A small Zapier-inspired automation app on the MEAN stack (TypeScript throughout). Users sign in with GitHub, build a
-**Zap** (one trigger plus one action), and the app runs it when GitHub sends the matching webhook.
+A Zapier-style app. You sign in with GitHub, build a Zap (one trigger and one action), and the app runs it when GitHub sends the matching webhook.
 
-The Zap that works end to end: **GitHub pull request opened → comment on that pull request**, with the comment
-built from a template that maps trigger fields (`{{pull_request.author}}`, `{{pull_request.title}}`, …).
+The Zap that runs end to end is **pull request opened → comment on that pull request**. The comment is a template, so `{{pull_request.author}}` and `{{pull_request.title}}` are filled in from the event. An optional Copilot draft can write that Zap for you. It is always saved switched off.
 
 ## Time log
 
@@ -12,70 +10,21 @@ built from a template that maps trigger fields (`{{pull_request.author}}`, `{{pu
 |---|---|
 | Started (read brief, planning) | 2026-10-27 23:00 |
 | Implementation started | 2026-10-27 23:30 |
-| Stopped | _to be filled at submission_ |
+| Stopped | _fill in the actual stop time_ |
 
-## Stack
+## Requirements
 
-| Layer | Choice |
-|---|---|
-| Front end | Angular 22 (standalone, OnPush, signals, typed reactive forms), Angular Material |
-| API | Express 5, Node 22+, Zod validation, pino logging |
-| Persistence | MongoDB 7 in Docker Compose, Mongoose; sessions in Mongo via `connect-mongo` |
-| GitHub | GitHub App (`@octokit/app`): user OAuth for sign-in, installation tokens for actions |
-| Shared | `@workflow/shared`: Zod schemas, catalog and template helpers used by both API and web |
-| Tests | Vitest (API, shared, Angular unit-test builder), supertest |
-
-## Repository layout
-
-```
-apps/
-  api/      Express API (feature modules: auth, github, zaps, runs, engine, webhooks)
-  web/      Angular app (core/, shared/, features/auth, features/zaps)
-packages/
-  shared/   Contracts shared by API and web (schemas, catalog, templates)
-```
-
-## How it works
-
-```
-Browser ──/api (dev proxy)──▶ Express API ──▶ MongoDB (users, installations, repositories, zaps, zap runs, sessions)
-                                   ▲
-GitHub ──webhook──▶ smee.io ──▶ /api/webhooks/github ──▶ ZapExecutor ──▶ GitHub REST (installation token)
-```
-
-1. **Sign in.** `/api/auth/github/login` stores a random `state` in the session and redirects to GitHub. The
-   callback verifies `state` and exchanges the code for a GitHub App user token. That token is used **once** to read
-   the user's profile, the installations they can access and the repositories in each. It is then discarded and
-   never persisted. The app stores installations, repositories and a per-user list of accessible repository ids.
-2. **Build a Zap.** The builder only offers repositories from that access list. The API re-checks access
-   server-side on every create and update, and validates the template against the trigger's declared output fields
-   using the same `ZapInputSchema` the UI uses.
-3. **Run.** A `pull_request` webhook is verified with HMAC-SHA256 (`X-Hub-Signature-256`, timing-safe) over the raw
-   body and acknowledged with `202`. It is then normalized into a trigger event. For each enabled Zap on that
-   repository, the executor:
-   - claims a `ZapRun` (unique index on `zapId + deliveryId`, so GitHub redeliveries are no-ops),
-   - re-checks that the owner still has access,
-   - renders the template and posts the comment with a short-lived installation token,
-   - records success (with the comment URL) or failure.
-4. **Observe.** The Zap page shows run history with links to the PR and the created comment.
-
-Installation webhooks (`installation`, `installation_repositories`) keep installations and repositories in sync and
-revoke access when repositories are removed or the app is uninstalled.
+- Node.js 22+ and npm 10+
+- Docker, for the local MongoDB container
+- A GitHub account that can create a GitHub App and a test repository
 
 ## Setup
 
-### Prerequisites
+### 1. Webhook channel
 
-- Node.js 22+ (developed on 24) and npm 10+
-- Docker, for the local MongoDB container
-- A GitHub account where you can create a GitHub App and own a test repository
+Open <https://smee.io/new> and copy the channel URL. `npm run dev` forwards deliveries from that channel to the local API.
 
-### 1. Create a webhook proxy channel
-
-Open <https://smee.io/new> and copy the channel URL. GitHub delivers webhooks to it and `npm run dev` forwards them
-to the local API.
-
-### 2. Create the GitHub App
+### 2. GitHub App
 
 GitHub → Settings → Developer settings → GitHub Apps → **New GitHub App**:
 
@@ -83,195 +32,61 @@ GitHub → Settings → Developer settings → GitHub Apps → **New GitHub App*
 |---|---|
 | Homepage URL | `http://localhost:4200` |
 | Callback URL | `http://localhost:4200/api/auth/github/callback` |
-| Expire user authorization tokens | on (default) |
-| Request user authorization (OAuth) during installation | **off** |
+| Request user authorization (OAuth) during installation | off |
 | Setup URL | `http://localhost:4200/api/auth/github/login` (check **Redirect on update**) |
 | Webhook | active, URL = your smee channel, secret = a random string |
-| Repository permissions | **Pull requests: Read and write** (Metadata: read-only is automatic) |
-| Subscribe to events | **Pull request** (installation events are always sent) |
-| Where can it be installed | Only on this account (fine for the demo) |
+| Repository permissions | Pull requests: Read and write |
+| Subscribe to events | Pull request |
 
-After creating it, note the **App ID**, **Client ID** and app **slug** (from the public page URL), generate a
-**client secret**, and generate a **private key** (`.pem`).
+Note the App ID, Client ID, and slug (the last part of `https://github.com/apps/<slug>`). Generate a client secret and a private key.
 
-### 3. Configure the API
+### 3. Configure and run
 
 ```bash
 cp apps/api/.env.example apps/api/.env
-```
-
-Fill in `apps/api/.env`. Every variable is documented in `.env.example`. Save the private key as
-`apps/api/github-app.private-key.pem`; `*.pem` and `.env` are gitignored. The API validates its environment at
-startup and exits with a list of anything missing.
-
-### Optional: enable Copilot drafting
-
-Add an OpenAI API key to the backend environment:
-
-```dotenv
-OPENAI_API_KEY=...
-# A model that supports the Responses API structured outputs format.
-OPENAI_MODEL=gpt-4o-mini
-```
-
-Copilot is unavailable until `OPENAI_API_KEY` is set; the rest of the app still works. In the Zap builder, select a
-repository, describe the automation, and choose **Draft Zap**. The backend sends the prompt to OpenAI, accepts only
-a strict JSON `name` and `comment` response, then reconstructs and validates a normal Zap with the existing shared
-schema. It always saves the result **off**. Copilot cannot choose repositories, trigger/action types, or enable a
-Zap; review the draft and switch it on yourself.
-
-### 4. Install and run
-
-```bash
 npm install
-docker compose up -d
+npm run db
 npm run dev
 ```
 
-`docker compose up -d` starts MongoDB 7 on `localhost:27017` with no authentication and a named volume. That is
-intentional for a local review: the reviewer needs no cloud account, and the port is bound to localhost only. Point `MONGODB_URI` at another server if you already have one. The API and the Angular app stay on the
-host; only the database is containerized, so hot reload and the webhook forwarder keep working.
+Fill in `apps/api/.env`. Each variable is documented in `.env.example`. Put the private key at the path in `GITHUB_PRIVATE_KEY_PATH`. `.env` and `*.pem` are gitignored. The API exits on startup if a required variable is missing.
 
-`npm run dev` builds the shared package, then runs four processes:
-- the shared package watcher,
-- the API on `:3000`,
-- the Angular dev server on `:4200`, which proxies `/api` to the API,
-- the smee webhook forwarder.
+`npm run dev` starts MongoDB's companion processes: the shared package watcher, the API on port 3000, the Angular app on port 4200 (it proxies `/api`), and the smee forwarder. Open <http://localhost:4200>.
 
-Open <http://localhost:4200>.
+Copilot is off until `OPENAI_API_KEY` is set. Restart `npm run dev` after adding it. `OPENAI_MODEL` defaults to `gpt-4o-mini`.
 
-### 5. Try it
+## Try it
 
-1. **Sign in with GitHub.**
-2. In the builder, use **Install the GitHub App on more repositories** and pick a test repository. GitHub redirects
-   back through the Setup URL and your repository access is refreshed.
-3. Create a Zap:
-   - trigger: GitHub, Pull request opened, your repository;
-   - action: GitHub, Comment on pull request, a comment using the field chips;
-   - toggle it **On** and save.
-4. Open a pull request on that repository. A comment appears within a few seconds, and the run shows up in
-   **Run history**.
+1. Sign in with GitHub.
+2. In the builder, use **Install the GitHub App** and choose a test repository. It then appears in the Repository dropdown.
+3. Create a Zap: Pull request opened, that repository, a comment that uses the field chips, switched **On**. Save.
+4. Open a pull request on that repository. The bot comments within a few seconds, and **Run history** shows the run with a link to the comment.
+5. To use Copilot instead of filling the form: select the repository, describe the Zap, and click **Draft Zap**. Review the result, switch it **On**, and save. Copilot cannot enable a Zap.
 
 ## Scripts
 
 | Command | What it does |
 |---|---|
-| `docker compose up -d` | Start local MongoDB (also `npm run db`) |
-| `npm run dev` | Shared watcher, API, web and smee together |
-| `npm test` / `npm run test:unit` | All unit tests (shared, API, web). No database needed |
-| `npm run test:integration` | API integration tests against MongoDB (needs `npm run db`) |
-| `npm run test:e2e` | Playwright browser tests (needs `npm run db`; starts its own API and web servers) |
-| `npm run test:coverage` | Unit + integration tests with coverage thresholds (needs `npm run db`) |
-| `npm run lint` | ESLint across the monorepo |
-| `npm run typecheck` | Type-check every workspace, specs and E2E tests included |
-| `npm run build` | Production builds of shared, API and web |
+| `npm run db` | Start local MongoDB |
+| `npm run dev` | API, web app, and webhook forwarder |
+| `npm test` | Unit tests. No database |
+| `npm run test:integration` | API tests against MongoDB |
+| `npm run test:e2e` | Playwright. Needs MongoDB and starts its own servers |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | Type-check every workspace |
+| `npm run build` | Production build |
 
-## Testing
+Automated tests do not call GitHub or OpenAI. CI runs the same suites on pull requests.
 
-| Layer | Tooling | What it proves |
-|---|---|---|
-| Unit | Vitest (shared, API), Angular unit-test builder with Vitest + jsdom (web) | Templating, schemas, webhook verification and normalization, executor, services, guards, interceptor and components, with every collaborator mocked |
-| Integration | Vitest + Supertest, real MongoDB | HTTP routes, sessions and the OAuth flow, ownership checks, webhook → run → comment, idempotency, indexes and persistence |
-| E2E | Playwright (Chromium) | A user signs in, builds and edits Zaps in the real UI, a signed webhook produces a comment and a run in the history, and a second user cannot see or change the first user's Zaps |
+## How it works
 
-**No real GitHub in automated tests.** The `GitHubGateway` interface is the only boundary to GitHub. Tests inject
-`FakeGitHubGateway` (`apps/api/test/support`) through the container's `overrides` argument. It maps OAuth codes to
-seeded accounts and records comments. Everything else is the production code path: OAuth state checks, session
-rotation, HMAC verification, the registry, the executor and Mongo.
+Sign-in uses the GitHub App user token once, to record which repositories the user can access, then drops the token. The builder and the API both reject a repository outside that list. A webhook is checked with HMAC-SHA256 over the raw body, answered with `202`, and then matched to enabled Zaps on that repository. Each Zap runs at most once per delivery. The comment is posted with a short-lived installation token.
 
-**No real OpenAI in automated tests.** The parallel `CopilotGateway` boundary is replaced by a deterministic fake.
-Unit tests verify the OpenAI Responses request uses strict JSON schema output and rejects malformed/provider-error
-responses. Integration and Playwright tests prove a valid response produces an authorized, disabled Zap that the
-user reviews in the existing builder.
+Copilot may only return a name and a comment template. The server sets the trigger, the action, and the selected repository, validates the result with the same schema as the form, and saves the Zap switched off.
 
-**Test-only code never ships.** The E2E API (`apps/api/test/e2e/server.ts`) wraps the real app with a control
-router under `/api/__e2e`, used to reset data, queue the next sign-in and read recorded comments. It lives under
-`test/`, and `tsconfig.build.json` only compiles `src/`, so the production build cannot include it. The web app has
-no test hooks at all.
+## Limitations
 
-**Isolated databases.** Integration tests use `workflow-automation-integration` and E2E tests use
-`workflow-automation-e2e`, on the same local MongoDB as development. The test helpers refuse any database whose name
-does not end in `-integration` or `-e2e`, so a test run cannot wipe development data. Override the server with
-`MONGODB_TEST_URI`.
-
-**Coverage.** V8 coverage with thresholds that fail the run: 80% lines and 75% branches for the API and web, and 90%
-lines and 85% branches for the shared package. HTML reports are written to `<workspace>/coverage`.
-
-**CI.** `.github/workflows/ci.yml` runs lint, typecheck and unit tests, then integration tests with coverage and
-Playwright against a MongoDB service container. It needs no secrets.
-
-### Verification status
-
-The automated suite was last run locally on 2026-10-28 with all checks passing: lint, typecheck, production builds,
-29 shared unit tests, 94 API unit tests, 59 web unit tests, 60 API integration tests, and 7 Playwright scenarios.
-V8 coverage was shared **100% lines / 92.85% branches**, API **98.27% / 91.16%**, and web **95.32% / 92.97%**.
-
-The real GitHub smoke test reached GitHub's login page from the local app, confirming the OAuth redirect. It was not
-completed: it requires manually signing in to GitHub and opening a real pull request. Live Copilot drafting was also
-not performed because `OPENAI_API_KEY` was not configured. Neither live integration is represented as passing here.
-
-### Manual smoke test against real GitHub
-
-The automated suites never call GitHub. Before a demo, verify the real integration once:
-
-1. `npm run db`, then `npm run dev`. The smee forwarder logs that it is connected.
-2. Sign in at <http://localhost:4200>. You land on **Zaps** with your avatar in the toolbar.
-3. Open the builder and use **Install the GitHub App on more repositories** to install it on a test repository. The
-   repository then appears in the **Repository** dropdown.
-4. Create a Zap: Pull request opened on that repository, a comment using at least two field chips, switched **On**.
-5. Open a pull request on that repository. Within a few seconds:
-   - the smee forwarder and the API log a `pull_request` delivery answered with `202`;
-   - the bot comments on the PR, with the fields filled in;
-   - **Run history** (use **Refresh**) shows `succeeded`, the PR number and title, and a working **View comment**
-     link.
-6. In the GitHub App's settings, open **Advanced → Recent deliveries** and redeliver the same delivery. No second
-   comment appears.
-7. Switch the Zap **Off** and open another PR. No comment and no new run.
-8. Sign in as a second GitHub account in a private window. The first account's Zaps are not listed, and opening one
-   by URL shows **Zap not found**.
-
-## Design decisions and tradeoffs
-
-- **GitHub App rather than OAuth App.** Least privilege: the only write permission is Pull requests. Comments come
-  from a bot identity, and one app-level webhook replaces creating hooks per repository. It costs a little more
-  setup (private key, installation tokens).
-- **No stored user tokens.** Installation tokens cannot tell us what a *user* may access, so the user token is used
-  only during the OAuth callback to snapshot access, then dropped. The tradeoff: if a user loses access on GitHub,
-  the snapshot is stale until their next sign-in or an installation webhook. The executor re-checks the snapshot
-  before every run.
-- **Idempotency on `zapId + deliveryId`.** One delivery can fan out to several Zaps, each running at most once. The
-  run is claimed *before* the action, so delivery is at-most-once: a crash mid-run leaves a `running` record rather
-  than risking a duplicate comment.
-- **In-process execution after a `202`.** No queue. This keeps GitHub's 10-second timeout safe and the
-  infrastructure minimal. Production would move execution to a durable queue (BullMQ, SQS) with retries.
-- **Registry, not a workflow engine.** Triggers are normalizers keyed by GitHub event and action. Actions are handlers
-  keyed by action key. Adding an integration means adding a definition to the shared catalog and a handler, without
-  changing the engine. Zaps are single-step on purpose.
-- **Catalog in the shared package.** The app picker, builder validation and API validation read the same data.
-  GitLab, Slack, Linear, Jira and Sentry appear as *coming soon* so the picker is honest about what runs.
-- **Mustache-style templates.** `{{field}}` placeholders resolved from a flat map of declared output fields. There
-  is no expression evaluation, so templates cannot run code or reach undeclared data, and unknown fields are
-  rejected when the Zap is saved.
-- **Copilot drafts, never activates.** OpenAI structured output is constrained to a name and a comment template.
-  The server fixes the only supported GitHub trigger/action, authorizes the selected repository, and runs
-  `ZapInputSchema` before persisting an explicitly disabled draft.
-- **Server-side sessions.** An httpOnly, SameSite=Lax cookie with sessions in Mongo: revocable, and no tokens in the
-  browser. The Angular dev proxy keeps everything same-origin.
-- **Local MongoDB, not a hosted cluster.** Reviewers run on their own machine, and a cloud cluster fails when their
-  IP is not allowlisted or when credentials would have to travel with the repo. Compose runs Mongo only. The API
-  still takes any `MONGODB_URI`, so a hosted database remains a config change.
-
-## Known limitations
-
-- Runs are not retried. A failed comment, such as a transient GitHub error, is recorded as `failed`. Because runs
-  are keyed on the delivery id, replaying the same delivery is deliberately a no-op, so a retry would need an
-  explicit "re-run" feature.
-- Repository access is a snapshot (see above). Org members other than the installer get access on their next
-  sign-in.
-- There is a single trigger and a single action. The trigger event type is still PR-shaped, and adding non-PR
-  triggers would generalize `TriggerEvent`.
-- Deleting a Zap keeps its run history documents.
-- Copilot only supports the one shipped GitHub PR-opened → comment combination. It is intentionally unavailable
-  without `OPENAI_API_KEY`, and a malformed or unsupported model response is rejected.
-- Production deployment (HTTPS, secure cookies behind a proxy, rate limiting, a CSRF token in addition to SameSite)
-  is out of scope for the exercise.
+- One trigger and one action: pull request opened, then comment.
+- A failed run is not retried. Redelivering the same webhook does not post a second comment.
+- Repository access is a snapshot until the next sign-in or an installation webhook.
+- Copilot only drafts that one Zap, and only when `OPENAI_API_KEY` is set.
