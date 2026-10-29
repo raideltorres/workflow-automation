@@ -45,6 +45,21 @@ export type ZapInput = z.infer<typeof ZapInputSchema>;
 export const ZapPatchSchema = ZapFieldsSchema.partial();
 export type ZapPatch = z.infer<typeof ZapPatchSchema>;
 
+export const COPILOT_PROMPT_MAX_LENGTH = 2_000;
+
+export const CopilotZapDraftRequestSchema = z.object({
+  prompt: z.string().trim().min(1, 'Describe the automation you want').max(COPILOT_PROMPT_MAX_LENGTH),
+  repositoryId: z.number().int().positive(),
+});
+export type CopilotZapDraftRequest = z.infer<typeof CopilotZapDraftRequestSchema>;
+
+/** The only fields Copilot is permitted to decide for the current GitHub PR-comment Zap. */
+export const CopilotZapDraftSchema = z.object({
+  name: z.string().trim().min(1).max(ZAP_NAME_MAX_LENGTH),
+  comment: z.string().trim().min(1).max(COMMENT_BODY_MAX_LENGTH),
+});
+export type CopilotZapDraft = z.infer<typeof CopilotZapDraftSchema>;
+
 export interface Zap {
   readonly id: string;
   readonly name: string;

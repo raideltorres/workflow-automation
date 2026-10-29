@@ -2,7 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 
-import type { RepositoryListResponse, Zap, ZapInput, ZapPatch, ZapRun } from '@workflow/shared';
+import type {
+  CopilotZapDraftRequest,
+  RepositoryListResponse,
+  Zap,
+  ZapInput,
+  ZapPatch,
+  ZapRun,
+} from '@workflow/shared';
 
 const ZAPS_URL = '/api/zaps';
 
@@ -20,6 +27,10 @@ export class ZapsApiService {
 
   create(input: ZapInput): Observable<Zap> {
     return this.http.post<Zap>(ZAPS_URL, input);
+  }
+
+  createCopilotDraft(input: CopilotZapDraftRequest): Observable<Zap> {
+    return this.http.post<Zap>('/api/copilot/zap-drafts', input);
   }
 
   update(id: string, patch: ZapPatch): Observable<Zap> {

@@ -95,6 +95,48 @@
         <mat-icon fontSet="material-symbols-outlined">arrow_downward</mat-icon>
       </div>
 
+      <mat-card appearance="outlined" class="copilot">
+        <mat-card-content class="step">
+          <div class="step-heading">
+            <span class="step-mark" aria-hidden="true">
+              <mat-icon fontSet="material-symbols-outlined">auto_awesome</mat-icon>
+            </span>
+            <div>
+              <h2>Draft with Copilot</h2>
+              <p>Optional. Copilot creates a disabled Zap for you to review.</p>
+            </div>
+          </div>
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>What should this Zap do?</mat-label>
+            <textarea
+              matInput
+              formControlName="copilotPrompt"
+              maxlength="2000"
+              rows="3"
+              placeholder="When a pull request is opened, thank the author and mention the PR title."
+            ></textarea>
+            <mat-hint>Uses the repository selected above. It cannot turn a Zap on.</mat-hint>
+          </mat-form-field>
+
+          <div>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="drafting() || !hasRepositories()"
+              (click)="draftWithCopilot()"
+            >
+              <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">auto_awesome</mat-icon>
+              {{ drafting() ? 'Drafting…' : 'Draft Zap' }}
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <div class="connector" aria-hidden="true">
+        <mat-icon fontSet="material-symbols-outlined">arrow_downward</mat-icon>
+      </div>
+
       <mat-card appearance="outlined">
         <mat-card-content class="step">
           <div class="step-heading">

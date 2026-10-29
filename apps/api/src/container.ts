@@ -6,8 +6,12 @@ import type { AppConfig } from './core/config.js';
 import type { Logger } from './core/logger.js';
 import type { GitHubGateway } from './integrations/github/github.gateway.js';
 import { OctokitGitHubGateway } from './integrations/github/octokit-github.gateway.js';
+import type { CopilotGateway } from './integrations/openai/copilot.gateway.js';
+import { OpenAiCopilotGateway } from './integrations/openai/openai-copilot.gateway.js';
 import { AuthController } from './modules/auth/auth.controller.js';
 import { AuthService } from './modules/auth/auth.service.js';
+import { CopilotController } from './modules/copilot/copilot.controller.js';
+import { CopilotService } from './modules/copilot/copilot.service.js';
 import { CommentOnPullRequestAction } from './modules/engine/actions/comment-on-pull-request.action.js';
 import { EngineRegistry } from './modules/engine/engine.registry.js';
 import { pullRequestOpenedTrigger } from './modules/engine/triggers/pull-request-opened.trigger.js';
@@ -29,12 +33,14 @@ export interface Container {
   readonly githubGateway: GitHubGateway;
   readonly githubAccess: GitHubAccessService;
   readonly authController: AuthController;
+  readonly copilotController: CopilotController;
   readonly zapController: ZapController;
   readonly webhookController: WebhookController;
 }
 
 export interface ContainerOverrides {
   readonly githubGateway?: GitHubGateway;
+  readonly copilotGateway?: CopilotGateway;
 }
 
 export function oauthCallbackUrl(webUrl: string): string {
@@ -56,6 +62,9 @@ export function createContainer(
   const githubGateway =
     overrides.githubGateway ??
     new OctokitGitHubGateway({ ...config.github, callbackUrl: oauthCallbackUrl(config.webUrl) });
+  const copilotGateway =
+    overrides.copilotGateway ??
+    (config.openai.apiKey ? new OpenAiCopilotGateway(config.openai.apiKey, config.openai.model) : undefined);
 
   const users = new UserRepository();
   const githubRepository = new GitHubRepository();
@@ -65,6 +74,7 @@ export function createContainer(
   const githubAccess = new GitHubAccessService(users, githubRepository);
   const authService = new AuthService(githubGateway, githubAccess, users);
   const zapService = new ZapService(zapRepository, zapRunRepository, githubAccess);
+  const copilotService = new CopilotService(copilotGateway, zapService);
 
   const registry = new EngineRegistry([pullRequestOpenedTrigger], [new CommentOnPullRequestAction(githubGateway)]);
   const executor = new ZapExecutor(zapRepository, zapRunRepository, githubAccess, registry, logger);
@@ -77,6 +87,7 @@ export function createContainer(
     githubGateway,
     githubAccess,
     authController: new AuthController(authService, config.webUrl, logger),
+    copilotController: new CopilotController(copilotService),
     zapController: new ZapController(zapService),
     webhookController: new WebhookController(webhookService, config.github.webhookSecret, logger),
   };

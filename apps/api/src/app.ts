@@ -5,6 +5,7 @@ import { pinoHttp } from 'pino-http';
 import type { Container } from './container.js';
 import { createErrorHandler, notFoundHandler } from './core/middleware/error-handler.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
+import { createCopilotRouter } from './modules/copilot/copilot.routes.js';
 import { createGitHubRouter } from './modules/github/github.routes.js';
 import { createWebhookRouter } from './modules/webhooks/webhook.routes.js';
 import { createZapRouter } from './modules/zaps/zap.routes.js';
@@ -43,6 +44,7 @@ export function createApp(container: Container): Express {
   );
 
   app.use('/api/auth', createAuthRouter(container.authController));
+  app.use('/api/copilot', createCopilotRouter(container.copilotController));
   app.use('/api/github', createGitHubRouter(container.githubAccess, container.githubGateway.installUrl));
   app.use('/api/zaps', createZapRouter(container.zapController));
 

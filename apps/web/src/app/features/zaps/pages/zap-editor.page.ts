@@ -93,6 +93,7 @@ export class ZapEditorPage implements OnInit {
   protected readonly runs = signal<readonly ZapRun[]>([]);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  protected readonly drafting = signal(false);
   protected readonly formError = signal<string | null>(null);
   protected readonly loadError = signal<string | null>(null);
   protected readonly isEdit = computed(() => this.id() !== undefined);
@@ -114,6 +115,7 @@ export class ZapEditorPage implements OnInit {
     triggerKey: this.triggerKeyControl,
     repositoryId: new FormControl<number | null>(null, Validators.required),
     actionKey: this.fb.control<ActionKey>(DEFAULT_ACTION, Validators.required),
+    copilotPrompt: ['', [Validators.maxLength(2_000)]],
     body: [
       DEFAULT_COMMENT,
       [
@@ -195,6 +197,33 @@ export class ZapEditorPage implements OnInit {
       error: (error: unknown) => {
         this.saving.set(false);
         this.formError.set(toErrorMessage(error, 'Could not save the Zap'));
+      },
+    });
+  }
+
+  protected draftWithCopilot(): void {
+    const prompt = this.form.controls.copilotPrompt.value.trim();
+    const repositoryId = this.form.controls.repositoryId.value;
+    if (!prompt) {
+      this.formError.set('Describe the automation you want Copilot to draft');
+      return;
+    }
+    if (repositoryId == null) {
+      this.formError.set('Select a repository before drafting with Copilot');
+      return;
+    }
+
+    this.formError.set(null);
+    this.drafting.set(true);
+    this.api.createCopilotDraft({ prompt, repositoryId }).subscribe({
+      next: (zap) => {
+        this.drafting.set(false);
+        this.notify('Copilot created a disabled draft for your review');
+        void this.router.navigate(['/zaps', zap.id]);
+      },
+      error: (error: unknown) => {
+        this.drafting.set(false);
+        this.formError.set(toErrorMessage(error, 'Copilot could not create a draft'));
       },
     });
   }

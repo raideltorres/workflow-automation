@@ -40,3 +40,9 @@ export class ExternalServiceError extends AppError {
     super(502, 'external_service_error', `${service}: ${message}`, undefined, options);
   }
 }
+
+export class ServiceUnavailableError extends AppError {
+  constructor(service: string, message = 'is not configured') {
+    super(503, 'service_unavailable', `${service} ${message}`);
+  }
+}
