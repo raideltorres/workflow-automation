@@ -104,6 +104,22 @@ Fill in `apps/api/.env`. Every variable is documented in `.env.example`. Save th
 `apps/api/github-app.private-key.pem`; `*.pem` and `.env` are gitignored. The API validates its environment at
 startup and exits with a list of anything missing.
 
+### Optional: enable Copilot drafting
+
+Add an OpenAI API key to the backend environment:
+
+```dotenv
+OPENAI_API_KEY=...
+# A model that supports the Responses API structured outputs format.
+OPENAI_MODEL=gpt-4o-mini
+```
+
+Copilot is unavailable until `OPENAI_API_KEY` is set; the rest of the app still works. In the Zap builder, select a
+repository, describe the automation, and choose **Draft Zap**. The backend sends the prompt to OpenAI, accepts only
+a strict JSON `name` and `comment` response, then reconstructs and validates a normal Zap with the existing shared
+schema. It always saves the result **off**. Copilot cannot choose repositories, trigger/action types, or enable a
+Zap; review the draft and switch it on yourself.
+
 ### 4. Install and run
 
 ```bash
@@ -163,6 +179,11 @@ Open <http://localhost:4200>.
 seeded accounts and records comments. Everything else is the production code path: OAuth state checks, session
 rotation, HMAC verification, the registry, the executor and Mongo.
 
+**No real OpenAI in automated tests.** The parallel `CopilotGateway` boundary is replaced by a deterministic fake.
+Unit tests verify the OpenAI Responses request uses strict JSON schema output and rejects malformed/provider-error
+responses. Integration and Playwright tests prove a valid response produces an authorized, disabled Zap that the
+user reviews in the existing builder.
+
 **Test-only code never ships.** The E2E API (`apps/api/test/e2e/server.ts`) wraps the real app with a control
 router under `/api/__e2e`, used to reset data, queue the next sign-in and read recorded comments. It lives under
 `test/`, and `tsconfig.build.json` only compiles `src/`, so the production build cannot include it. The web app has
@@ -221,6 +242,9 @@ The automated suites never call GitHub. Before a demo, verify the real integrati
 - **Mustache-style templates.** `{{field}}` placeholders resolved from a flat map of declared output fields. There
   is no expression evaluation, so templates cannot run code or reach undeclared data, and unknown fields are
   rejected when the Zap is saved.
+- **Copilot drafts, never activates.** OpenAI structured output is constrained to a name and a comment template.
+  The server fixes the only supported GitHub trigger/action, authorizes the selected repository, and runs
+  `ZapInputSchema` before persisting an explicitly disabled draft.
 - **Server-side sessions.** An httpOnly, SameSite=Lax cookie with sessions in Mongo: revocable, and no tokens in the
   browser. The Angular dev proxy keeps everything same-origin.
 - **Local MongoDB, not a hosted cluster.** Reviewers run on their own machine, and a cloud cluster fails when their
@@ -237,5 +261,7 @@ The automated suites never call GitHub. Before a demo, verify the real integrati
 - There is a single trigger and a single action. The trigger event type is still PR-shaped, and adding non-PR
   triggers would generalize `TriggerEvent`.
 - Deleting a Zap keeps its run history documents.
+- Copilot only supports the one shipped GitHub PR-opened → comment combination. It is intentionally unavailable
+  without `OPENAI_API_KEY`, and a malformed or unsupported model response is rejected.
 - Production deployment (HTTPS, secure cookies behind a proxy, rate limiting, a CSRF token in addition to SameSite)
   is out of scope for the exercise.
