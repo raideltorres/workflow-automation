@@ -86,7 +86,7 @@ export function createContainer(
     sessionStore,
     githubGateway,
     githubAccess,
-    authController: new AuthController(authService, config.webUrl, logger),
+    authController: new AuthController(authService, config.webUrl, logger, config.env),
     copilotController: new CopilotController(copilotService),
     zapController: new ZapController(zapService),
     webhookController: new WebhookController(webhookService, config.github.webhookSecret, logger),

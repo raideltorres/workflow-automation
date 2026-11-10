@@ -4,9 +4,8 @@ import type { Request, Response } from 'express';
 
 import { UnauthorizedError } from '../../core/errors.js';
 import type { Logger } from '../../core/logger.js';
+import { SESSION_COOKIE_NAME, sessionCookieOptions } from '../../core/session-cookie.js';
 import type { AuthService } from './auth.service.js';
-
-const SESSION_COOKIE = 'wa.sid';
 
 function promisify(fn: (cb: (err?: unknown) => void) => void): Promise<void> {
   return new Promise((resolve, reject) => fn((err) => (err ? reject(err) : resolve())));
@@ -24,6 +23,7 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly webUrl: string,
     private readonly logger: Logger,
+    private readonly env: string,
   ) {}
 
   login = async (req: Request, res: Response): Promise<void> => {
@@ -65,7 +65,8 @@ export class AuthController {
 
   logout = async (req: Request, res: Response): Promise<void> => {
     await promisify((cb) => req.session.destroy(cb));
-    res.clearCookie(SESSION_COOKIE);
+    const { maxAge: _maxAge, ...clearOptions } = sessionCookieOptions(this.env);
+    res.clearCookie(SESSION_COOKIE_NAME, clearOptions);
     res.status(204).end();
   };
 }
